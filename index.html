@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GHOST OSINT - Player Intel</title>
+    <style>
+        :root { --bg: #050505; --card: #0f0f11; --border: #333; --accent: #00ff41; --text: #eee; --sec: #888; }
+        * { box-sizing: border-box; outline: none; }
+        
+        body { 
+            background: var(--bg); color: var(--text); margin: 0; 
+            font-family: 'Courier New', Courier, monospace; /* Hacker fontu */
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+        }
+
+        header { width: 100%; padding: 20px; background: #000; border-bottom: 1px solid var(--accent); text-align: center; margin-bottom: 20px; }
+        h1 { margin: 0; font-size: 24px; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; }
+        
+        .container { width: 95%; max-width: 900px; display: flex; flex-direction: column; gap: 20px; }
+
+        /* Arama Kutusu */
+        .search-box { display: flex; gap: 10px; background: var(--card); padding: 15px; border: 1px solid var(--border); border-radius: 4px; }
+        input { flex: 1; background: #000; border: 1px solid var(--border); color: var(--accent); padding: 12px; font-family: inherit; font-size: 16px; }
+        button { background: var(--accent); color: #000; border: none; padding: 0 25px; font-weight: bold; cursor: pointer; font-family: inherit; text-transform: uppercase; }
+        button:hover { opacity: 0.9; }
+
+        /* Sonuç Alanı - Grid Yapısı */
+        #result-area { display: none; grid-template-columns: 1fr 2fr; gap: 20px; }
+        @media (max-width: 700px) { #result-area { grid-template-columns: 1fr; } }
+
+        .card { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 4px; position: relative; }
+        .card-title { color: var(--sec); font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #222; padding-bottom: 5px; margin-bottom: 10px; display: block; }
+
+        /* Profil Resmi */
+        .avatar-box { text-align: center; }
+        .avatar-box img { width: 150px; border: 2px solid var(--border); image-rendering: pixelated; }
+
+        /* Veri Satırları */
+        .data-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1a1a1a; font-size: 14px; }
+        .data-row span:last-child { color: var(--accent); text-align: right; }
+
+        /* İsim Geçmişi Tablosu */
+        .history-list { max-height: 300px; overflow-y: auto; }
+        .h-item { display: flex; justify-content: space-between; padding: 8px; background: #111; margin-bottom: 4px; font-size: 13px; border-left: 2px solid #333; }
+        .h-item:hover { border-left-color: var(--accent); background: #161616; }
+
+        .error { color: #ff3333; text-align: center; margin-top: 20px; display: none; font-weight: bold; }
+        .loading { color: var(--accent); text-align: center; margin-top: 20px; display: none; animation: blink 1s infinite; }
+        
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>GHOST v1.0 <span style="font-size:12px; color:#fff;">/// TARGET ANALYZER</span></h1>
+    </header>
+
+    <div class="container">
+        <div class="search-box">
+            <input type="text" id="target" placeholder="HEDEF OYUNCU ADI..." onkeydown="if(event.key==='Enter') scan()">
+            <button onclick="scan()">SORGULA</button>
+        </div>
+
+        <div id="loading" class="loading">VERİTABANI TARANIYOR...</div>
+        <div id="error" class="error"></div>
+
+        <div id="result-area">
+            
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="card avatar-box">
+                    <span class="card-title">HEDEF GÖRÜNTÜSÜ</span>
+                    <img id="body-img" src="" alt="Skin">
+                    <div style="margin-top:10px; font-size:12px; color:#555;">Karakter Modeli</div>
+                </div>
+                
+                <div class="card">
+                    <span class="card-title">İNDİRMELER</span>
+                    <a id="dl-skin" href="#" target="_blank" style="display:block; color:var(--text); text-decoration:none; padding:5px; background:#222; text-align:center; margin-bottom:5px; font-size:12px;">SKIN İNDİR</a>
+                    <a id="dl-cape" href="#" target="_blank" style="display:none; color:var(--text); text-decoration:none; padding:5px; background:#222; text-align:center; font-size:12px;">PELERİN İNDİR</a>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="card">
+                    <span class="card-title">KİMLİK BİLGİLERİ</span>
+                    <div class="data-row"><span>Kullanıcı Adı:</span> <span id="r-name">...</span></div>
+                    <div class="data-row"><span>UUID:</span> <span id="r-uuid" style="font-size:11px;">...</span></div>
+                    <div class="data-row"><span>Hesap Türü:</span> <span id="r-type">Microsoft / Modern</span></div>
+                    <div class="data-row"><span>Oluşturulma:</span> <span id="r-date">...</span></div>
+                </div>
+
+                <div class="card">
+                    <span class="card-title">İSİM DEĞİŞİKLİK GEÇMİŞİ</span>
+                    <div id="history-box" class="history-list">
+                        </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        async function scan() {
+            const user = document.getElementById('target').value.trim();
+            if(!user) return;
+
+            // UI Sıfırla
+            document.getElementById('result-area').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                const req = await fetch(`/api/lookup?username=${user}`);
+                const res = await req.json();
+
+                document.getElementById('loading').style.display = 'none';
+
+                if(res.status === 'error') {
+                    document.getElementById('error').innerText = "HATA: " + res.message;
+                    document.getElementById('error').style.display = 'block';
+                    return;
+                }
+
+                const data = res.data;
+
+                // Verileri Yerleştir
+                document.getElementById('result-area').style.display = 'grid';
+                
+                // 3D Model API (Crafatar kullanıyoruz, kafa değil tüm vücut için)
+                document.getElementById('body-img').src = `https://crafatar.com/renders/body/${data.uuid}?overlay`;
+                
+                document.getElementById('r-name').innerText = data.username;
+                document.getElementById('r-uuid').innerText = data.uuid;
+                document.getElementById('r-date').innerText = data.created_at || "Bilinmiyor";
+
+                // İndirme Linkleri
+                document.getElementById('dl-skin').href = data.textures.skin;
+                const capeBtn = document.getElementById('dl-cape');
+                if(data.textures.cape) {
+                    capeBtn.href = data.textures.cape;
+                    capeBtn.style.display = 'block';
+                    capeBtn.innerText = "PELERİN İNDİR";
+                } else {
+                    capeBtn.style.display = 'none';
+                }
+
+                // İsim Geçmişi Tablosu
+                const historyBox = document.getElementById('history-box');
+                historyBox.innerHTML = '';
+                
+                // İsim geçmişini ters çevirelim (en yeni en üstte)
+                const history = data.username_history.reverse();
+                
+                history.forEach(h => {
+                    const div = document.createElement('div');
+                    div.className = 'h-item';
+                    
+                    // Tarih formatlama
+                    let dateStr = "İlk İsim";
+                    if(h.changed_at) {
+                        const d = new Date(h.changed_at);
+                        dateStr = d.toLocaleDateString("tr-TR") + ' ' + d.toLocaleTimeString("tr-TR");
+                    }
+                    
+                    div.innerHTML = `<span>${h.username}</span> <span style="color:#666; font-size:11px;">${dateStr}</span>`;
+                    historyBox.appendChild(div);
+                });
+
+            } catch (e) {
+                console.error(e);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').innerText = "Sunucu bağlantı hatası.";
+                document.getElementById('error').style.display = 'block';
+            }
+        }
+    </script>
+</body>
+                      </html>
+      
