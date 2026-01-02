@@ -1,0 +1,19 @@
+{
+  "name": "render-skyblock-bot-final",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mineflayer": "^4.20.1",
+    "mineflayer-pathfinder": "^2.4.5",
+    "socket.io": "^4.7.2",
+    "vec3": "^0.1.8",
+    "minecraft-data": "^3.71.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
