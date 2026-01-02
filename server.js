@@ -12,42 +12,71 @@ const io = new Server(server);
 let bot = null;
 let automationActive = false;
 
+// --- WEB PANEL TASARIMI ---
 const html = `
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8"><title>SkyBot v14 - Sessiz & Stabil</title>
+    <meta charset="UTF-8"><title>SkyBot v15 - Profesyonel</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body { background: #0d1117; color: white; font-family: sans-serif; margin: 0; display: flex; height: 100vh; }
         .side { width: 320px; background: #161b22; padding: 20px; border-right: 1px solid #333; display:flex; flex-direction:column; overflow-y: auto; }
         .main { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 10px; }
-        input { background: #010409; border: 1px solid #333; color: white; padding: 10px; border-radius: 5px; width: 100%; margin-bottom: 8px; box-sizing: border-box; }
+        input { background: #010409; border: 1px solid #444; color: white; padding: 10px; border-radius: 5px; width: 100%; margin-bottom: 8px; box-sizing: border-box; }
         button { padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 5px; color: white; }
         #log { flex: 1; background: black; border-radius: 8px; padding: 15px; overflow-y: auto; font-family: monospace; font-size: 13px; border: 1px solid #333; color: #00ff00; }
+        label { font-size: 11px; color: #8b949e; display: block; margin-bottom: 4px; }
     </style>
 </head>
 <body>
     <div class="side">
-        <h3>SKY-BOT v14</h3>
+        <h3>SKY-BOT v15</h3>
         <input id="h" placeholder="IP:Port">
         <input id="u" placeholder="Bot İsmi">
         <button style="background:#1f6feb" onclick="connect()">BAĞLAN</button>
-        <button style="background:#444" onclick="disconnect()">KES</button>
+        <button style="background:#444" onclick="disconnect()">BAĞLANTIYI KES</button>
+        
         <hr style="border:0.5px solid #333; margin:15px 0;">
-        <label>Sandık</label><input id="c" placeholder="X, Y, Z">
-        <label>Hedef</label><input id="b" placeholder="X, Y, Z">
-        <button style="background:#238636" onclick="start()">BAŞLAT</button>
+        <label>Sadece Yürü (X,Y,Z)</label>
+        <input id="g" placeholder="7770, 100, 7800">
+        <button style="background:#8957e5" onclick="goToPos()">GİT</button>
+
+        <hr style="border:0.5px solid #333; margin:15px 0;">
+        <label>Sandık (X,Y,Z)</label>
+        <input id="c" placeholder="7779, 101, 7822">
+        <label>Dizilecek Blok (X,Y,Z)</label>
+        <input id="b" placeholder="7785, 101, 7825">
+        <button style="background:#238636" onclick="start()">OTOMASYONU BAŞLAT</button>
         <button style="background:#da3633" onclick="stop()">DURDUR</button>
     </div>
-    <div class="main"><div id="log"></div></div>
+    <div class="main">
+        <div id="log"></div>
+        <div style="display:flex; gap:10px;">
+            <input id="msg" placeholder="Mesaj yaz ve Enter'a bas..." style="margin:0;">
+            <button style="background:#1f6feb; width:100px; margin:0;" onclick="send()">YAZ</button>
+        </div>
+    </div>
     <script>
         const socket = io();
         function connect() { socket.emit('conn', {h:document.getElementById('h').value, u:document.getElementById('u').value}); }
         function disconnect() { socket.emit('disc'); }
+        function goToPos() { socket.emit('walk-to', document.getElementById('g').value); }
         function start() { socket.emit('start', {c:document.getElementById('c').value, b:document.getElementById('b').value}); }
         function stop() { socket.emit('stop'); }
-        socket.on('log', m => { const l=document.getElementById('log'); l.innerHTML += '<div>'+m+'</div>'; l.scrollTop = l.scrollHeight; });
+        function send() { 
+            const i=document.getElementById('msg'); 
+            if(i.value) { socket.emit('chat', i.value); i.value=''; }
+        }
+        // Enter tuşu dinleyici
+        document.getElementById('msg').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') { send(); }
+        });
+        socket.on('log', m => { 
+            const l=document.getElementById('log'); 
+            l.innerHTML += '<div>'+m+'</div>'; 
+            l.scrollTop = l.scrollHeight; 
+        });
     </script>
 </body>
 </html>
@@ -62,71 +91,85 @@ io.on('connection', (socket) => {
         bot = mineflayer.createBot({ host: ip, port: parseInt(port)||25565, username: data.u, version: "1.16.5", auth: 'offline' });
         bot.loadPlugin(pathfinder);
         
-        // HATA MESAJLARINI SUSTURMA KOMUTU (Kritik)
-        bot.on('error', (e) => { if(!e.message.includes('transaction')) socket.emit('log', 'Hata: ' + e.message); });
+        bot.on('login', () => socket.emit('log', '<b style="color:lime">>> SUNUCUYA BAĞLANDI!</b>'));
+        bot.on('message', (m) => socket.emit('log', `[CHAT] ${m.toHTML()}`));
+        bot.on('error', (e) => {
+            if(!e.message.includes('transaction')) socket.emit('log', '<span style="color:red">Hata: '+e.message+'</span>');
+        });
+    });
+
+    socket.on('walk-to', async (coords) => {
+        if(!bot) return socket.emit('log', 'Hata: Bot bağlı değil.');
+        const p = coords.split(',').map(n => Math.floor(Number(n.trim())));
+        socket.emit('log', `Koordinata gidiliyor: ${p}`);
+        bot.pathfinder.setMovements(new Movements(bot, require('minecraft-data')(bot.version)));
+        await bot.pathfinder.goto(new goals.GoalNear(p[0], p[1], p[2], 1));
+        socket.emit('log', 'Hedefe ulaşıldı.');
     });
 
     socket.on('start', async (data) => {
+        if(!bot) return;
         automationActive = true;
-        const chestVec = new vec3(...data.c.split(',').map(n => Math.floor(Number(n.trim()))));
-        const targetVec = new vec3(...data.b.split(',').map(n => Math.floor(Number(n.trim()))));
+        const cP = data.c.split(',').map(n => Math.floor(Number(n.trim())));
+        const bP = data.b.split(',').map(n => Math.floor(Number(n.trim())));
+        const chestVec = new vec3(cP[0], cP[1], cP[2]);
+        const targetVec = new vec3(bP[0], bP[1], bP[2]);
+
+        socket.emit('log', '<b style="color:cyan">Otomasyon Başlatıldı.</b>');
 
         const runLoop = async () => {
             if(!automationActive || !bot) return;
             try {
-                bot.pathfinder.setMovements(new Movements(bot, require('minecraft-data')(bot.version)));
+                const mcData = require('minecraft-data')(bot.version);
+                bot.pathfinder.setMovements(new Movements(bot, mcData));
 
-                // 1. ADIM: SANDIK
-                if (bot.inventory.emptySlotCount() > 5) {
-                    socket.emit('log', 'Eşya almaya gidiliyor...');
+                // 1. Sandıktan Eşya Al
+                if (bot.inventory.emptySlotCount() > 2) {
                     await bot.pathfinder.goto(new goals.GoalNear(chestVec.x, chestVec.y, chestVec.z, 2));
-                    const block = bot.blockAt(chestVec);
-                    if (block && block.name !== 'air') {
-                        const chest = await bot.openChest(block);
-                        const itemsToGet = chest.containerItems().filter(i => i && i.name.includes('block'));
-                        
-                        for (const item of itemsToGet) {
+                    const chestBlock = bot.blockAt(chestVec);
+                    if (chestBlock) {
+                        const chest = await bot.openChest(chestBlock);
+                        const items = chest.containerItems().filter(i => i.name.includes('block'));
+                        for (const item of items) {
                             if (bot.inventory.emptySlotCount() === 0) break;
-                            try {
-                                await chest.withdraw(item.type, null, item.count);
-                                await new Promise(r => setTimeout(r, 350)); // Stabil hız
-                            } catch(e) {} // Transaction hatasını görmezden gel
+                            await chest.withdraw(item.type, null, item.count);
+                            await new Promise(r => setTimeout(r, 250));
                         }
                         await chest.close();
                     }
                 }
 
-                // 2. ADIM: DİZME
-                const myBlocks = bot.inventory.items().filter(i => i.name.includes('block'));
-                if (myBlocks.length > 0) {
-                    socket.emit('log', 'Teslimat yapılıyor...');
+                // 2. Hedefe Diz
+                const blocks = bot.inventory.items().filter(i => i.name.includes('block'));
+                if (blocks.length > 0) {
+                    await bot.equip(blocks[0], 'hand');
                     await bot.pathfinder.goto(new goals.GoalNear(targetVec.x, targetVec.y, targetVec.z, 2));
                     const tBlock = bot.blockAt(targetVec);
                     if (tBlock) {
-                        await bot.lookAt(tBlock.position.offset(0.5, 0.5, 0.5));
+                        await bot.lookAt(tBlock.position);
                         bot.setControlState('sneak', true);
-                        const window = await bot.activateBlock(tBlock);
-                        const invItems = bot.inventory.items().filter(i => i.name.includes('block'));
-                        for (const item of invItems) {
-                            try {
-                                await bot.clickWindow(item.slot, 0, 1);
-                                await new Promise(r => setTimeout(r, 350));
-                            } catch(e) {}
+                        const win = await bot.activateBlock(tBlock);
+                        const myItems = bot.inventory.items().filter(i => i.name.includes('block'));
+                        for (const it of myItems) {
+                            await bot.clickWindow(it.slot, 0, 1);
+                            await new Promise(r => setTimeout(r, 250));
                         }
-                        await new Promise(r => setTimeout(r, 400));
-                        bot.closeWindow(window);
+                        await new Promise(r => setTimeout(r, 300));
+                        bot.closeWindow(win);
                         bot.setControlState('sneak', false);
-                        socket.emit('log', 'İşlem tamam.');
+                        socket.emit('log', 'Döngü bitti, devam ediliyor...');
                     }
                 }
-            } catch (e) { } // Genel hataları logu kirletmesin diye susturduk
+            } catch (err) { console.log(err); }
             if(automationActive) setTimeout(runLoop, 1000);
         };
         runLoop();
     });
 
-    socket.on('stop', () => { automationActive = false; });
+    socket.on('stop', () => { automationActive = false; socket.emit('log', 'Durduruldu.'); });
     socket.on('disc', () => { if(bot) bot.quit(); automationActive = false; });
+    socket.on('chat', (m) => { if(bot) bot.chat(m); });
 });
 
 server.listen(process.env.PORT || 10000, '0.0.0.0');
+                    
