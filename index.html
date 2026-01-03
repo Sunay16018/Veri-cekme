@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Otomasyon Paneli</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-robot"></i> Minecraft Otomasyon Paneli</h1>
+            <div class="header-info">
+                <span id="server-time">Sunucu Saati: --:--:--</span>
+                <span id="connection-status" class="status-offline">Bağlantı: Kapalı</span>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="card">
+                    <h2><i class="fas fa-server"></i> Sunucu Bağlantısı</h2>
+                    <div class="form-group">
+                        <label for="host">Sunucu Adresi:</label>
+                        <input type="text" id="host" placeholder="localhost" value="localhost">
+                    </div>
+                    <div class="form-group">
+                        <label for="port">Port:</label>
+                        <input type="number" id="port" placeholder="25565" value="25565">
+                    </div>
+                    <div class="form-group">
+                        <label for="username">Bot Adı:</label>
+                        <input type="text" id="username" placeholder="OtomasyonBot" value="OtomasyonBot">
+                    </div>
+                    <div class="form-group">
+                        <label for="version">Sürüm:</label>
+                        <input type="text" id="version" placeholder="1.16.5" value="1.16.5" readonly>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="start-bot" class="btn btn-success">
+                            <i class="fas fa-play"></i> Bot Başlat
+                        </button>
+                        <button id="stop-bot" class="btn btn-danger" disabled>
+                            <i class="fas fa-stop"></i> Bot Durdur
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2><i class="fas fa-cogs"></i> Otomasyon Ayarları</h2>
+                    <div class="coords-group">
+                        <h3>Sandık Koordinatları</h3>
+                        <div class="coord-inputs">
+                            <input type="number" id="chest-x" placeholder="X" value="0">
+                            <input type="number" id="chest-y" placeholder="Y" value="0">
+                            <input type="number" id="chest-z" placeholder="Z" value="0">
+                        </div>
+                    </div>
+                    
+                    <div class="coords-group">
+                        <h3>Hedef Koordinatları</h3>
+                        <div class="coord-inputs">
+                            <input type="number" id="target-x" placeholder="X" value="0">
+                            <input type="number" id="target-y" placeholder="Y" value="0">
+                            <input type="number" id="target-z" placeholder="Z" value="0">
+                        </div>
+                    </div>
+                    
+                    <div class="coords-group">
+                        <h3>Boşaltma Koordinatları</h3>
+                        <div class="coord-inputs">
+                            <input type="number" id="empty-x" placeholder="X" value="0">
+                            <input type="number" id="empty-y" placeholder="Y" value="0">
+                            <input type="number" id="empty-z" placeholder="Z" value="0">
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="start-automation" class="btn btn-primary" disabled>
+                            <i class="fas fa-play-circle"></i> Otomasyon Başlat
+                        </button>
+                        <button id="stop-automation" class="btn btn-warning" disabled>
+                            <i class="fas fa-pause-circle"></i> Otomasyon Durdur
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2><i class="fas fa-terminal"></i> Komut Gönder</h2>
+                    <div class="form-group">
+                        <input type="text" id="command-input" placeholder="/komut yazın..." disabled>
+                        <button id="send-command" class="btn btn-secondary" disabled>
+                            <i class="fas fa-paper-plane"></i> Gönder
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="dashboard">
+                    <div class="dashboard-header">
+                        <h2><i class="fas fa-tachometer-alt"></i> Bot Durum Paneli</h2>
+                        <div class="status-indicator">
+                            <span class="status-dot" id="bot-status-dot"></span>
+                            <span id="bot-status-text">Bağlantı Yok</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3><i class="fas fa-heart"></i> Can</h3>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="health-bar" style="width: 100%"></div>
+                            </div>
+                            <span class="stat-value" id="health-text">20/20</span>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3><i class="fas fa-hamburger"></i> Yemek</h3>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="food-bar" style="width: 100%"></div>
+                            </div>
+                            <span class="stat-value" id="food-text">20/20</span>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3><i class="fas fa-map-marker-alt"></i> Konum</h3>
+                            <div class="coordinates">
+                                <div class="coord">
+                                    <span class="coord-label">X:</span>
+                                    <span class="coord-value" id="pos-x">0</span>
+                                </div>
+                                <div class="coord">
+                                    <span class="coord-label">Y:</span>
+                                    <span class="coord-value" id="pos-y">0</span>
+                                </div>
+                                <div class="coord">
+                                    <span class="coord-label">Z:</span>
+                                    <span class="coord-value" id="pos-z">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3><i class="fas fa-hand-rock"></i> Eldeki Eşya</h3>
+                            <span class="stat-value" id="equipped-item">Boş</span>
+                        </div>
+                    </div>
+                    
+                    <div class="action-bar">
+                        <h3><i class="fas fa-bolt"></i> Action Bar</h3>
+                        <div id="action-bar-text" class="action-text">Bilgi bekleniyor...</div>
+                    </div>
+                    
+                    <div class="title-display">
+                        <h3><i class="fas fa-heading"></i> Title Mesajı</h3>
+                        <div id="title-text" class="title-text">Başlık bekleniyor...</div>
+                    </div>
+                </div>
+
+                <div class="terminal">
+                    <div class="terminal-header">
+                        <h2><i class="fas fa-terminal"></i> Sistem Terminali</h2>
+                        <div class="terminal-controls">
+                            <button id="clear-terminal" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-trash"></i> Temizle
+                            </button>
+                            <button id="toggle-autoscroll" class="btn btn-sm btn-secondary active">
+                                <i class="fas fa-arrow-down"></i> Otomatik Kaydırma
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="terminal-content" id="terminal-output">
+                        <div class="log-entry system">
+                            <span class="timestamp">[00:00:00]</span>
+                            <span class="log-type">[SİSTEM]</span>
+                            <span class="log-message">Minecraft Otomasyon Paneli başlatıldı</span>
+                        </div>
+                    </div>
+                    
+                    <div class="terminal-input">
+                        <div class="input-prefix">></div>
+                        <input type="text" id="terminal-command" placeholder="Terminal komutu girin...">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>© 2024 Minecraft Otomasyon Paneli - v1.0 | 7/24 Render.com Üzerinde Çalışır</p>
+            <div class="footer-stats">
+                <span id="cycle-count">Döngü Sayısı: 0</span>
+                <span id="error-count">Hata Sayısı: 0</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
